@@ -1,9 +1,21 @@
 namespace MenuForge.Models;
 
+public enum RegistrySource
+{
+    /// <summary>Per-user entries under HKCU\Software\Classes.</summary>
+    CurrentUser,
+
+    /// <summary>Machine-wide (all users) entries under HKLM\Software\Classes.</summary>
+    LocalMachine
+}
+
 public enum MenuScope
 {
     /// <summary>Right-click on any file.</summary>
     AllFiles,
+
+    /// <summary>Right-click on any file or folder (AllFilesystemObjects).</summary>
+    AllFilesystemObjects,
 
     /// <summary>Right-click on a folder.</summary>
     Folders,
@@ -26,6 +38,7 @@ public sealed record MenuLocation(MenuScope Scope, string? Extension)
     public override string ToString() => Scope switch
     {
         MenuScope.AllFiles => "All files",
+        MenuScope.AllFilesystemObjects => "All files and folders",
         MenuScope.Folders => "Folders",
         MenuScope.FolderBackground => "Folder background",
         MenuScope.Drives => "Drives",
@@ -35,12 +48,16 @@ public sealed record MenuLocation(MenuScope Scope, string? Extension)
 }
 
 /// <summary>
-/// A custom context-menu entry backed by a shell verb under HKCU\Software\Classes.
+/// A custom context-menu entry backed by a shell verb under
+/// HKCU\Software\Classes (per user) or HKLM\Software\Classes (all users).
 /// </summary>
 public sealed class ShellMenuItem
 {
     /// <summary>Registry key name of the shell verb, e.g. "MenuForge.OpenWithVSCode".</summary>
     public string Id { get; set; } = "";
+
+    /// <summary>Where the entry is registered: current user or all users.</summary>
+    public RegistrySource Source { get; set; } = RegistrySource.CurrentUser;
 
     /// <summary>Text shown in the context menu (may contain &amp; for the access key).</summary>
     public string Title { get; set; } = "";

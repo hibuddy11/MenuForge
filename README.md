@@ -5,17 +5,18 @@ A lightweight Windows utility for customizing the File Explorer context menu. Ad
 ## Features
 
 - **Add** custom context-menu entries (e.g. "Open with VSCode", "Open Terminal here")
-- **Edit / delete** existing user-level entries, including ones created by other applications
+- **Edit / delete** existing entries — both per-user (HKCU) and machine-wide / all-users (HKLM) entries are listed, including the ones installed by applications
 - **Argument configuration** with Explorer placeholders (`%1`, `%V`, `%L`, `%W`) and a one-click insert box
 - **Scope control** — show an entry on:
+  - all files and folders
   - all files
   - folders
   - folder background (right-click on empty space inside a folder)
   - drives
   - specific file types (e.g. `.txt`, `.md`)
 - Optional icon and "Shift-only" mode (entry appears only while Shift is held)
-- Writes only to `HKCU\Software\Classes` — **no administrator rights required**
-- Changes are applied to Explorer immediately (no reboot, no restart)
+- New entries are written to `HKCU\Software\Classes` — **no administrator rights required** (changing all-users entries offers to relaunch elevated)
+- Sortable columns (click a column header), changes are applied to Explorer immediately
 
 ## Placeholders
 
@@ -48,17 +49,20 @@ dotnet run
 
 ## How it works
 
-MenuForge manages standard shell verb registrations under `HKEY_CURRENT_USER\Software\Classes`:
+MenuForge manages standard shell verb registrations under `Software\Classes`:
 
 | Location | Registry key |
 |---|---|
+| All files and folders | `AllFilesystemObjects\shell\<id>\command` |
 | All files | `*\shell\<id>\command` |
 | Folders | `Directory\shell\<id>\command` |
 | Folder background | `Directory\Background\shell\<id>\command` |
 | Drives | `Drive\shell\<id>\command` |
 | Specific file types | `SystemFileAssociations\<ext>\shell\<id>\command` |
 
-Deleting an entry in MenuForge removes its registry keys. Entries created by other applications are listed too, so they can be removed the same way (only user-level entries are shown; system-wide entries under `HKLM` are never touched).
+Per-user entries live under `HKEY_CURRENT_USER\Software\Classes`, machine-wide (all users) entries under `HKEY_LOCAL_MACHINE\Software\Classes` — both are listed in the app. Deleting an entry removes its registry keys. Editing or deleting an all-users entry requires administrator rights; MenuForge offers to relaunch elevated when needed.
+
+MenuForge manages command-style entries only. Entries implemented as shell extensions (cascading menus such as 7-Zip, or the Windows 11 modern entries) are not listed.
 
 ## License
 

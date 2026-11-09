@@ -5,7 +5,7 @@ namespace MenuForge.Services;
 
 /// <summary>
 /// Reads and writes custom shell verbs (context-menu entries) under
-/// HKCU\Software\Classes, so no administrator rights are required.
+/// HKCU\Software\Classes (per user) and HKLM\Software\Classes (all users).
 /// </summary>
 public static class ShellMenuRegistry
 {
@@ -14,42 +14,53 @@ public static class ShellMenuRegistry
     /// <summary>Loads every command-style custom entry found under the managed locations.</summary>
     public static List<ShellMenuItem> LoadAll()
     {
-        var byId = new Dictionary<string, ShellMenuItem>(StringComparer.OrdinalIgnoreCase);
+        var byKey = new Dictionary<(RegistrySource Source, string Id), ShellMenuItem>();
 
-        foreach (var location in EnumerateLocations())
+        foreach (var source in new[] { RegistrySource.CurrentUser, RegistrySource.LocalMachine })
         {
-            using var shellKey = Registry.CurrentUser.OpenSubKey(GetShellPath(location));
-            if (shellKey is null) continue;
-
-            foreach (var id in shellKey.GetSubKeyNames())
+            foreach (var location in EnumerateLocations(source))
             {
-                using var key = shellKey.OpenSubKey(id);
-                if (key is null) continue;
+                using var shellKey = OpenClasses(source).OpenSubKey(GetShellPath(location));
+                if (shellKey is null) continue;
 
-                using var commandKey = key.OpenSubKey("command");
-                if (commandKey is null) continue; // cascade menus and shell extensions are not managed
-
-                if (!byId.TryGetValue(id, out var item))
+                foreach (var id in shellKey.GetSubKeyNames())
                 {
+                    using var key = shellKey.OpenSubKey(id);
+                    if (key is null) continue;
+
+                    using var commandKey = key.OpenSubKey("command");
+                    if (commandKey is null) continue; // skip cascade menus and shell extensions
+
+                    var itemKey = (source, id);
+                    if (byKey.TryGetValue(itemKey, out var item))
+                    {
+                        item.Locations.Add(location);
+                        continue;
+                    }
+
                     var (command, arguments) = SplitCommand(commandKey.GetValue("") as string ?? "");
                     item = new ShellMenuItem
                     {
                         Id = id,
+                        Source = source,
                         Title = key.GetValue("MUIVerb") as string
                                ?? key.GetValue("") as string
                                ?? id,
                         Icon = key.GetValue("Icon") as string,
                         Command = command,
                         Arguments = arguments,
-                        Extended = key.GetValueNames().Contains("Extended")
+                        Extended = key.GetValueNames().Contains("Extended"),
+                        Locations = { location }
                     };
-                    byId.Add(id, item);
+                    byKey[itemKey] = item;
                 }
-                item.Locations.Add(location);
             }
         }
 
-        return byId.Values.OrderBy(i => i.Title, StringComparer.OrdinalIgnoreCase).ToList();
+        return byKey.Values
+            .OrderBy(i => i.Source) // per-user entries first
+            .ThenBy(i => i.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>
@@ -64,15 +75,15 @@ public static class ShellMenuRegistry
         if (string.IsNullOrWhiteSpace(item.Id))
             item.Id = GenerateId(item.Title);
 
-        foreach (var location in FindLocations(item.Id))
+        foreach (var location in FindLocations(item.Source, item.Id))
         {
             if (!HasLocation(item.Locations, location))
-                DeleteAt(location, item.Id);
+                DeleteAt(item.Source, location, item.Id);
         }
 
         foreach (var location in item.Locations)
         {
-            WriteItem(location, item);
+            WriteItem(item.Source, location, item);
         }
 
         NativeMethods.NotifyShellOfChange();
@@ -81,16 +92,23 @@ public static class ShellMenuRegistry
     /// <summary>Removes the item from every location it currently occupies.</summary>
     public static void Delete(ShellMenuItem item)
     {
-        foreach (var location in FindLocations(item.Id))
+        foreach (var location in FindLocations(item.Source, item.Id))
         {
-            DeleteAt(location, item.Id);
+            DeleteAt(item.Source, location, item.Id);
         }
         NativeMethods.NotifyShellOfChange();
     }
 
-    private static void WriteItem(MenuLocation location, ShellMenuItem item)
+    private static RegistryKey OpenClasses(RegistrySource source) => source switch
     {
-        using var key = Registry.CurrentUser.CreateSubKey(GetShellPath(location) + "\\" + item.Id);
+        RegistrySource.CurrentUser => Registry.CurrentUser,
+        RegistrySource.LocalMachine => Registry.LocalMachine,
+        _ => throw new ArgumentOutOfRangeException(nameof(source))
+    };
+
+    private static void WriteItem(RegistrySource source, MenuLocation location, ShellMenuItem item)
+    {
+        using var key = OpenClasses(source).CreateSubKey(GetShellPath(location) + "\\" + item.Id);
         key.SetValue("", item.Title);
         if (!string.IsNullOrWhiteSpace(item.Icon))
             key.SetValue("Icon", item.Icon);
@@ -101,19 +119,20 @@ public static class ShellMenuRegistry
         commandKey.SetValue("", JoinCommand(item.Command, item.Arguments));
     }
 
-    private static void DeleteAt(MenuLocation location, string id)
+    private static void DeleteAt(RegistrySource source, MenuLocation location, string id)
     {
-        Registry.CurrentUser.DeleteSubKeyTree(GetShellPath(location) + "\\" + id, throwOnMissingSubKey: false);
+        OpenClasses(source).DeleteSubKeyTree(GetShellPath(location) + "\\" + id, throwOnMissingSubKey: false);
     }
 
-    private static IEnumerable<MenuLocation> EnumerateLocations()
+    private static IEnumerable<MenuLocation> EnumerateLocations(RegistrySource source)
     {
+        yield return new MenuLocation(MenuScope.AllFilesystemObjects, null);
         yield return new MenuLocation(MenuScope.AllFiles, null);
         yield return new MenuLocation(MenuScope.Folders, null);
         yield return new MenuLocation(MenuScope.FolderBackground, null);
         yield return new MenuLocation(MenuScope.Drives, null);
 
-        using var sysAssoc = Registry.CurrentUser.OpenSubKey(Root + @"\SystemFileAssociations");
+        using var sysAssoc = OpenClasses(source).OpenSubKey(Root + @"\SystemFileAssociations");
         if (sysAssoc is null) yield break;
 
         foreach (var name in sysAssoc.GetSubKeyNames())
@@ -125,12 +144,12 @@ public static class ShellMenuRegistry
         }
     }
 
-    private static List<MenuLocation> FindLocations(string id)
+    private static List<MenuLocation> FindLocations(RegistrySource source, string id)
     {
         var result = new List<MenuLocation>();
-        foreach (var location in EnumerateLocations())
+        foreach (var location in EnumerateLocations(source))
         {
-            using var shellKey = Registry.CurrentUser.OpenSubKey(GetShellPath(location));
+            using var shellKey = OpenClasses(source).OpenSubKey(GetShellPath(location));
             if (shellKey?.GetSubKeyNames().Contains(id, StringComparer.OrdinalIgnoreCase) == true)
                 result.Add(location);
         }
@@ -146,6 +165,7 @@ public static class ShellMenuRegistry
 
     private static string GetShellPath(MenuLocation location) => location.Scope switch
     {
+        MenuScope.AllFilesystemObjects => Root + @"\AllFilesystemObjects\shell",
         MenuScope.AllFiles => Root + @"\*\shell",
         MenuScope.Folders => Root + @"\Directory\shell",
         MenuScope.FolderBackground => Root + @"\Directory\Background\shell",
@@ -178,7 +198,7 @@ public static class ShellMenuRegistry
 
         var id = "MenuForge." + slug;
         var suffix = 2;
-        while (FindLocations(id).Count > 0)
+        while (FindLocations(RegistrySource.CurrentUser, id).Count > 0) // new items are per-user
             id = $"MenuForge.{slug}{suffix++}";
         return id;
     }

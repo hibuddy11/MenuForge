@@ -22,6 +22,7 @@ public sealed class EditItemForm : Form
         Text = "Show only while Shift is held",
         AutoSize = true
     };
+    private readonly CheckBox _chkAllFsObjects = new() { Text = "All files and folders", AutoSize = true };
     private readonly CheckBox _chkAllFiles = new() { Text = "All files", AutoSize = true };
     private readonly CheckBox _chkFolders = new() { Text = "Folders", AutoSize = true };
     private readonly CheckBox _chkFolderBackground = new()
@@ -155,7 +156,7 @@ public sealed class EditItemForm : Form
         AcceptButton = ok;
         CancelButton = cancel;
 
-        ClientSize = new Size(640, 620);
+        ClientSize = new Size(640, 648);
         Controls.Add(table);
     }
 
@@ -166,25 +167,27 @@ public sealed class EditItemForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 6,
+            RowCount = 7,
             Padding = new Padding(10, 6, 4, 4)
         };
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        grid.Controls.Add(_chkAllFiles, 0, 0);
+        grid.Controls.Add(_chkAllFsObjects, 0, 0);
+        grid.SetColumnSpan(_chkAllFsObjects, 2);
+        grid.Controls.Add(_chkAllFiles, 0, 1);
         grid.SetColumnSpan(_chkAllFiles, 2);
-        grid.Controls.Add(_chkFolders, 0, 1);
+        grid.Controls.Add(_chkFolders, 0, 2);
         grid.SetColumnSpan(_chkFolders, 2);
-        grid.Controls.Add(_chkFolderBackground, 0, 2);
+        grid.Controls.Add(_chkFolderBackground, 0, 3);
         grid.SetColumnSpan(_chkFolderBackground, 2);
-        grid.Controls.Add(_chkDrives, 0, 3);
+        grid.Controls.Add(_chkDrives, 0, 4);
         grid.SetColumnSpan(_chkDrives, 2);
 
-        grid.Controls.Add(_chkFileExtension, 0, 4);
+        grid.Controls.Add(_chkFileExtension, 0, 5);
         _txtExtensions.Dock = DockStyle.Fill;
         _txtExtensions.Enabled = false;
-        grid.Controls.Add(_txtExtensions, 1, 4);
+        grid.Controls.Add(_txtExtensions, 1, 5);
         _chkFileExtension.CheckedChanged += (s, e) => _txtExtensions.Enabled = _chkFileExtension.Checked;
 
         var extHint = new Label
@@ -194,7 +197,7 @@ public sealed class EditItemForm : Form
             AutoSize = true,
             Margin = new Padding(4, 2, 0, 0)
         };
-        grid.Controls.Add(extHint, 1, 5);
+        grid.Controls.Add(extHint, 1, 6);
 
         group.Controls.Add(grid);
         return group;
@@ -269,6 +272,9 @@ public sealed class EditItemForm : Form
         {
             switch (location.Scope)
             {
+                case MenuScope.AllFilesystemObjects:
+                    _chkAllFsObjects.Checked = true;
+                    break;
                 case MenuScope.AllFiles:
                     _chkAllFiles.Checked = true;
                     break;
@@ -302,6 +308,8 @@ public sealed class EditItemForm : Form
             return Fail("Choose the command to run.", _txtCommand);
 
         var locations = new List<MenuLocation>();
+        if (_chkAllFsObjects.Checked)
+            locations.Add(new MenuLocation(MenuScope.AllFilesystemObjects, null));
         if (_chkAllFiles.Checked)
             locations.Add(new MenuLocation(MenuScope.AllFiles, null));
         if (_chkFolders.Checked)
