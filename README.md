@@ -17,6 +17,7 @@ A lightweight Windows utility for customizing the File Explorer context menu. Ad
 - Optional icon and "Shift-only" mode (entry appears only while Shift is held)
 - New entries are written to `HKCU\Software\Classes` — **no administrator rights required** (changing all-users entries offers to relaunch elevated)
 - Sortable columns (click a column header), changes are applied to Explorer immediately
+- "Hide Windows built-in entries" filter (on by default) keeps the list focused on third-party and your own entries
 
 ## Placeholders
 

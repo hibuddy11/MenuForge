@@ -191,6 +191,25 @@ public static class ShellMenuRegistry
         _ => throw new ArgumentOutOfRangeException(nameof(location))
     };
 
+    /// <summary>
+    /// True for machine-wide entries that belong to Windows itself: the command points into the
+    /// Windows directory (or is empty, e.g. DelegateExecute handlers). Per-user entries are never system entries.
+    /// </summary>
+    public static bool IsWindowsEntry(ShellMenuItem item)
+    {
+        if (item.Source != RegistrySource.LocalMachine) return false;
+        if (string.IsNullOrWhiteSpace(item.Command)) return true;
+
+        var command = Environment.ExpandEnvironmentVariables(item.Command.Trim());
+        var windowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows)
+            .TrimEnd('\\') + "\\";
+
+        if (!Path.IsPathRooted(command))
+            return File.Exists(Path.Combine(Environment.SystemDirectory, command)); // e.g. "rundll32.exe"
+
+        return command.StartsWith(windowsDir, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Turns "txt", ".txt" or "*.TXT" into ".txt".</summary>
     public static string NormalizeExtension(string? extension)
     {

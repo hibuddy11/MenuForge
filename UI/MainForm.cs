@@ -19,6 +19,13 @@ public sealed class MainForm : Form
     private readonly Button _btnEdit = new() { Text = "&Edit...", AutoSize = true };
     private readonly Button _btnDelete = new() { Text = "&Delete", AutoSize = true };
     private readonly Button _btnRefresh = new() { Text = "&Refresh", AutoSize = true };
+    private readonly CheckBox _chkHideWindows = new()
+    {
+        Text = "Hide &Windows built-in entries",
+        AutoSize = true,
+        Checked = true,
+        Margin = new Padding(16, 6, 3, 3)
+    };
     private readonly Label _status = new();
     private readonly Label _hintAdmin = new();
     private readonly Label _hintWin11 = new();
@@ -84,7 +91,8 @@ public sealed class MainForm : Form
         _btnEdit.Click += (s, e) => EditSelected();
         _btnDelete.Click += (s, e) => DeleteSelected();
         _btnRefresh.Click += (s, e) => LoadItems();
-        bar.Controls.AddRange(new Control[] { _btnAdd, _btnEdit, _btnDelete, _btnRefresh });
+        _chkHideWindows.CheckedChanged += (s, e) => LoadItems();
+        bar.Controls.AddRange(new Control[] { _btnAdd, _btnEdit, _btnDelete, _btnRefresh, _chkHideWindows });
         Controls.Add(bar);
     }
 
@@ -132,15 +140,26 @@ public sealed class MainForm : Form
             return;
         }
 
+        var hidden = 0;
         _list.BeginUpdate();
         _list.Items.Clear();
         foreach (var item in items)
         {
+            var isWindows = ShellMenuRegistry.IsWindowsEntry(item);
+            if (isWindows && _chkHideWindows.Checked)
+            {
+                hidden++;
+                continue;
+            }
+
             var row = new ListViewItem(DisplayTitle(item))
             {
                 Tag = item
             };
-            row.SubItems.Add(item.Source == RegistrySource.LocalMachine ? "All users" : "This user");
+            if (isWindows)
+                row.ForeColor = SystemColors.GrayText;
+            row.SubItems.Add(isWindows ? "Windows"
+                : item.Source == RegistrySource.LocalMachine ? "All users" : "This user");
             row.SubItems.Add(string.Join(", ", item.Locations.Select(l => l.ToString())));
             row.SubItems.Add(item.Command);
             row.SubItems.Add(item.Arguments);
@@ -150,7 +169,8 @@ public sealed class MainForm : Form
         }
         _list.EndUpdate();
 
-        _status.Text = _list.Items.Count == 1 ? "1 item" : $"{_list.Items.Count} items";
+        _status.Text = (_list.Items.Count == 1 ? "1 item" : $"{_list.Items.Count} items")
+            + (hidden > 0 ? $"  ({hidden} Windows built-in hidden)" : "");
         UpdateButtons();
     }
 
