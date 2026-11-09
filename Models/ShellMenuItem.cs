@@ -62,6 +62,12 @@ public sealed class ShellMenuItem
     /// <summary>Text shown in the context menu (may contain &amp; for the access key).</summary>
     public string Title { get; set; } = "";
 
+    /// <summary>Title exactly as stored in the registry, e.g. "@shell32.dll,-8506" (null for new items).</summary>
+    public string? RawTitle { get; set; }
+
+    /// <summary>Title as first loaded (resource references resolved); used to detect user edits.</summary>
+    public string? LoadedTitle { get; set; }
+
     /// <summary>Optional icon specification, e.g. "C:\app\app.exe,0".</summary>
     public string? Icon { get; set; }
 

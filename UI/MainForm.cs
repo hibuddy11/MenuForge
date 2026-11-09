@@ -136,7 +136,7 @@ public sealed class MainForm : Form
         _list.Items.Clear();
         foreach (var item in items)
         {
-            var row = new ListViewItem(string.IsNullOrWhiteSpace(item.Title) ? item.Id : item.Title)
+            var row = new ListViewItem(DisplayTitle(item))
             {
                 Tag = item
             };
@@ -152,6 +152,12 @@ public sealed class MainForm : Form
 
         _status.Text = _list.Items.Count == 1 ? "1 item" : $"{_list.Items.Count} items";
         UpdateButtons();
+    }
+
+    private static string DisplayTitle(ShellMenuItem item)
+    {
+        var title = string.IsNullOrWhiteSpace(item.Title) ? item.Id : item.Title;
+        return title.Replace("&&", "\0").Replace("&", "").Replace("\0", "&");
     }
 
     private void AddNew()

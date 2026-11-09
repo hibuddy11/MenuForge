@@ -39,13 +39,18 @@ public static class ShellMenuRegistry
                     }
 
                     var (command, arguments) = SplitCommand(commandKey.GetValue("") as string ?? "");
+                    var rawTitle = key.GetValue("MUIVerb") as string
+                                   ?? key.GetValue("") as string;
+                    var title = string.IsNullOrWhiteSpace(rawTitle)
+                        ? id
+                        : NativeMethods.ResolveIndirectString(rawTitle.Trim()) ?? id;
                     item = new ShellMenuItem
                     {
                         Id = id,
                         Source = source,
-                        Title = key.GetValue("MUIVerb") as string
-                               ?? key.GetValue("") as string
-                               ?? id,
+                        Title = title,
+                        RawTitle = rawTitle,
+                        LoadedTitle = title,
                         Icon = key.GetValue("Icon") as string,
                         Command = command,
                         Arguments = arguments,
@@ -109,7 +114,19 @@ public static class ShellMenuRegistry
     private static void WriteItem(RegistrySource source, MenuLocation location, ShellMenuItem item)
     {
         using var key = OpenClasses(source).CreateSubKey(GetShellPath(location) + "\\" + item.Id);
-        key.SetValue("", item.Title);
+
+        var titleUnchanged = item.RawTitle is not null && item.Title == item.LoadedTitle;
+        if (!titleUnchanged)
+        {
+            key.SetValue("", item.Title);
+            key.DeleteValue("MUIVerb", throwOnMissingValue: false); // MUIVerb would override the new title
+        }
+        else if (key.GetValue("MUIVerb") is null && key.GetValue("") is null)
+        {
+            // Newly added location of an existing item: keep the original (possibly resource) title.
+            key.SetValue("MUIVerb", item.RawTitle!);
+        }
+
         if (!string.IsNullOrWhiteSpace(item.Icon))
             key.SetValue("Icon", item.Icon);
         if (item.Extended)
