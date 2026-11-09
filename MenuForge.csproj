@@ -8,11 +8,26 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>MenuForge</RootNamespace>
     <AssemblyName>MenuForge</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Product>MenuForge</Product>
     <Description>Customize the Windows Explorer context menu: add, edit and remove entries with full command and argument configuration.</Description>
     <Authors>hibuddy11</Authors>
     <ApplicationIcon>Assets\MenuForge.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Release package: self-contained single file, trimmed to ~13 MB.
+       Usage: dotnet publish -c Release -r win-x64 -o publish -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
 </Project>

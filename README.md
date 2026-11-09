@@ -48,6 +48,12 @@ Single project, no external dependencies. To run:
 dotnet run
 ```
 
+To produce the release package (self-contained, trimmed single exe, ~13 MB, no .NET install needed):
+
+```
+dotnet publish -c Release -r win-x64 -o publish
+```
+
 ## How it works
 
 MenuForge manages standard shell verb registrations under `Software\Classes`:
