@@ -17,6 +17,12 @@ public sealed class EditItemForm : Form
     private readonly TextBox _txtArguments = new();
     private readonly TextBox _txtExtensions = new();
     private readonly ComboBox _cmbPlaceholder = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly CheckBox _chkVisible = new()
+    {
+        Text = "Visible in the context menu",
+        AutoSize = true,
+        Checked = true
+    };
     private readonly CheckBox _chkExtended = new()
     {
         Text = "Show only while Shift is held",
@@ -120,10 +126,19 @@ public sealed class EditItemForm : Form
         table.Controls.Add(example, 1, 5);
         table.SetColumnSpan(example, 2);
 
-        // Extended (Shift-only)
-        _chkExtended.Margin = new Padding(0, 10, 0, 0);
-        table.Controls.Add(_chkExtended, 1, 6);
-        table.SetColumnSpan(_chkExtended, 2);
+        // Visible + Extended (Shift-only)
+        var options = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+        _chkVisible.Margin = new Padding(0, 0, 16, 0);
+        _chkExtended.Margin = new Padding(0);
+        options.Controls.Add(_chkVisible);
+        options.Controls.Add(_chkExtended);
+        table.Controls.Add(options, 1, 6);
+        table.SetColumnSpan(options, 2);
 
         // Scopes
         var scopes = BuildScopesGroup();
@@ -266,6 +281,7 @@ public sealed class EditItemForm : Form
         _txtCommand.Text = _item.Command;
         _txtArguments.Text = _item.Arguments;
         _chkExtended.Checked = _item.Extended;
+        _chkVisible.Checked = !_item.Hidden;
 
         var extensions = new List<string>();
         foreach (var location in _item.Locations)
@@ -341,6 +357,7 @@ public sealed class EditItemForm : Form
         _item.Arguments = _txtArguments.Text.Trim();
         _item.Icon = string.IsNullOrWhiteSpace(_txtIcon.Text) ? null : _txtIcon.Text.Trim();
         _item.Extended = _chkExtended.Checked;
+        _item.Hidden = !_chkVisible.Checked;
         _item.Locations = locations;
         return true;
     }

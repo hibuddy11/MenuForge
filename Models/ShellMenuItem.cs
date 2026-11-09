@@ -80,6 +80,12 @@ public sealed class ShellMenuItem
     /// <summary>Only show the entry while Shift is held (Extended verb).</summary>
     public bool Extended { get; set; }
 
+    /// <summary>
+    /// True when the verb carries a hide marker (LegacyDisable / ProgrammaticAccessOnly /
+    /// HideBasedOnVelocityId): it exists in the registry but Explorer does not show it.
+    /// </summary>
+    public bool Hidden { get; set; }
+
     /// <summary>All menu locations this item is registered at.</summary>
     public List<MenuLocation> Locations { get; set; } = new();
 }

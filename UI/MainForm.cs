@@ -152,11 +152,11 @@ public sealed class MainForm : Form
                 continue;
             }
 
-            var row = new ListViewItem(DisplayTitle(item))
+            var row = new ListViewItem(DisplayTitle(item) + (item.Hidden ? "  (hidden)" : ""))
             {
                 Tag = item
             };
-            if (isWindows)
+            if (isWindows || item.Hidden)
                 row.ForeColor = SystemColors.GrayText;
             row.SubItems.Add(isWindows ? "Windows"
                 : item.Source == RegistrySource.LocalMachine ? "All users" : "This user");

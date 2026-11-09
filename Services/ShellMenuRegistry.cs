@@ -11,6 +11,12 @@ public static class ShellMenuRegistry
 {
     private const string Root = @"Software\Classes";
 
+    /// <summary>Registry values that make Explorer skip a verb.</summary>
+    private static readonly string[] HideMarkers =
+    {
+        "LegacyDisable", "ProgrammaticAccessOnly", "HideBasedOnVelocityId"
+    };
+
     /// <summary>Loads every command-style custom entry found under the managed locations.</summary>
     public static List<ShellMenuItem> LoadAll()
     {
@@ -55,6 +61,7 @@ public static class ShellMenuRegistry
                         Command = command,
                         Arguments = arguments,
                         Extended = key.GetValueNames().Contains("Extended"),
+                        Hidden = HideMarkers.Any(m => key.GetValue(m) is not null),
                         Locations = { location }
                     };
                     byKey[itemKey] = item;
@@ -129,8 +136,23 @@ public static class ShellMenuRegistry
 
         if (!string.IsNullOrWhiteSpace(item.Icon))
             key.SetValue("Icon", item.Icon);
+        else
+            key.DeleteValue("Icon", throwOnMissingValue: false);
+
         if (item.Extended)
             key.SetValue("Extended", "");
+        else
+            key.DeleteValue("Extended", throwOnMissingValue: false);
+
+        if (item.Hidden)
+        {
+            key.SetValue("LegacyDisable", "");
+        }
+        else
+        {
+            foreach (var marker in HideMarkers)
+                key.DeleteValue(marker, throwOnMissingValue: false);
+        }
 
         using var commandKey = key.CreateSubKey("command");
         commandKey.SetValue("", JoinCommand(item.Command, item.Arguments));
