@@ -12,6 +12,7 @@
     <Product>MenuForge</Product>
     <Description>Customize the Windows Explorer context menu: add, edit and remove entries with full command and argument configuration.</Description>
     <Authors>hibuddy11</Authors>
+    <ApplicationIcon>Assets\MenuForge.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

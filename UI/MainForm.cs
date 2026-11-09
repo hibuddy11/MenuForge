@@ -38,6 +38,7 @@ public sealed class MainForm : Form
         MinimumSize = new Size(860, 520);
         Size = new Size(1080, 660);
         Font = new Font("Segoe UI", 9F);
+        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
         BuildList();
         BuildTopBar();
